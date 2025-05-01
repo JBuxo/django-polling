@@ -1,0 +1,41 @@
+<div style="max-width: 768px; margin: 0 auto; padding: 20px; width: 100%;">
+    <form action="{% url 'polls:vote' question.id %}" method="post" style="background-color: white; padding: 20px; margin: 20px auto; border-radius: 8px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); width: 100%; font-family: Arial, sans-serif;">
+      {% csrf_token %}
+      <fieldset style="border: none; padding: 0;">
+        <legend style="font-size: 1.5rem; font-weight: bold; margin-bottom: 15px; text-align: center;">
+          <h1 style="color: #255ce8;">{{ question.question_text }}</h1>
+        </legend>
+        {% if error_message %}
+          <p style="color: #ff4d4d; font-size: 1rem; margin-top: 10px;"><strong>{{ error_message }}</strong></p>
+        {% endif %}
+        {% for choice in question.choice_set.all %}
+          <div style="margin-bottom: 10px;">
+            <input type="radio" name="choice" id="choice{{ forloop.counter }}" value="{{ choice.id }}" style="margin-right: 10px;">
+            <label for="choice{{ forloop.counter }}" style="font-size: 1rem; margin-left: 10px; cursor: pointer;">{{ choice.choice_text }}</label>
+          </div>
+        {% endfor %}
+      </fieldset>
+      <input type="submit" value="Vote" style="background-color: #255ce8; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-size: 1rem; width: 100%; margin-top: 20px;">
+    </form>
+    
+    {% if latest_question_list %}
+      <ul style="list-style: none; padding-left: 0; margin-top: 20px;">
+        {% for question in latest_question_list %}
+          <li style="background-color: white; margin: 10px 0; padding: 10px; border-radius: 5px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);">
+            <a href="{% url 'polls:detail' question.id %}" style="font-size: 1rem; font-weight: bold; color: #255ce8; text-decoration: none;">{{ question.question_text }}</a>
+          </li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+    
+    <ul style="list-style: none; padding-left: 0; margin-top: 20px;">
+      {% for choice in question.choice_set.all %}
+        <li style="padding: 8px 0; background-color: #f9f9f9; margin-bottom: 10px;">
+          {{ choice.choice_text }} -- {{ choice.votes }} vote{{ choice.votes|pluralize }}
+        </li>
+      {% endfor %}
+    </ul>
+    
+    <a href="{% url 'polls:detail' question.id %}" style="color: #255ce8; text-decoration: none;">Vote again?</a>
+  </div>
+  

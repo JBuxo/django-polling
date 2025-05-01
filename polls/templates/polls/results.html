@@ -1,0 +1,28 @@
+{% load static %}
+
+<link rel="stylesheet" href="{% static 'tempaltes/polls/style.css' %}" />
+
+<div style="max-width: 768px; margin: 0 auto; padding: 20px; width: 100%; font-family: Arial, sans-serif;">
+  <h1 style="font-size: 2rem; font-weight: bold; color: #255ce8; text-align: center; margin-bottom: 20px;">{{ question.question_text }}</h1>
+  
+  <ul style="list-style: none; padding-left: 0; margin-top: 20px;">
+    {% for choice in question.choice_set.all %}
+      <li style="background-color: #f9f9f9; margin: 10px 0; padding: 10px; border-radius: 5px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-size: 1.1rem; font-weight: bold; color: #333;">{{ choice.choice_text }}</span>
+          <span style="font-size: 1rem; color: #777;">{{ choice.votes }} vote{{ choice.votes|pluralize }}</span>
+        </div>
+        {% if choice == question.choice_set.first %}
+          <div style="font-size: 1rem; color: green; font-weight: bold; text-align: center; margin-top: 5px;">
+            Leading!
+          </div>
+        {% endif %}
+      </li>
+    {% endfor %}
+  </ul>
+
+  <a href="{% url 'polls:detail' question.id %}" style="font-size: 1.1rem; color: #255ce8; text-decoration: none; margin-top: 20px; display: inline-block; text-align: center;">
+    Vote again?
+  </a>
+  
+</div>
