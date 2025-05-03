@@ -10,9 +10,9 @@ pipeline {
 
         stage('Clone repo') {
             steps {
-            git branch: 'main', url: 'https://github.com/JBuxo/django-polling.git'
-    }
-}
+                git branch: 'main', url: 'https://github.com/JBuxo/django-polling.git'
+            }
+        }
 
         stage('Deploy to EC2') {
             steps {
