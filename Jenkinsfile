@@ -15,30 +15,69 @@ pipeline {
             }
         }
 
+        stage('Debug Info') {
+            steps {
+                echo "Displaying environment for debugging"
+                sh 'whoami'
+                sh 'pwd'
+                sh 'ls -la'
+            }
+        }
+        
+        stage('Check Credentials') {
+            steps {
+                script {
+                    try {
+                        withCredentials([sshUserPrivateKey(credentialsId: 'ec2-ssh-key', keyFileVariable: 'SSH_KEY')]) {
+                            echo "Successfully loaded SSH key"
+                            sh 'ls -la $SSH_KEY'
+                        }
+                    } catch (Exception e) {
+                        echo "Error loading credentials: ${e.message}"
+                        error "Failed to load SSH credentials"
+                    }
+                }
+            }
+        }
+
         stage('Test SSH Connection') {
             steps {
-                sshagent(credentials: ['ec2-ssh-key']) {
-                    sh """
-                    echo "Testing SSH connection to EC2 instance..."
-                    ssh -o StrictHostKeyChecking=no $EC2_HOST 'echo "SSH connection successful"'
-                    """
+                script {
+                    try {
+                        sshagent(credentials: ['ec2-ssh-key']) {
+                            sh """
+                            echo "Testing SSH connection to EC2 instance..."
+                            ssh -o StrictHostKeyChecking=no -v $EC2_HOST 'echo "SSH connection successful"'
+                            """
+                        }
+                    } catch (Exception e) {
+                        echo "SSH connection error: ${e.message}"
+                        error "Failed to establish SSH connection"
+                    }
                 }
             }
         }
 
         stage('Deploy to EC2') {
             steps {
-                sshagent(credentials: ['ec2-ssh-key']) {
-                    sh """
-                    echo "Creating application directory on EC2..."
-                    ssh -o StrictHostKeyChecking=no $EC2_HOST 'mkdir -p $APP_DIR'
-                    
-                    echo "Copying files to EC2..."
-                    scp -o StrictHostKeyChecking=no -r . $EC2_HOST:$APP_DIR/ || (echo "SCP failed with exit code: \$?" && exit 1)
-                    
-                    echo "Verifying files were copied..."
-                    ssh -o StrictHostKeyChecking=no $EC2_HOST 'ls -la $APP_DIR'
-                    """
+                script {
+                    try {
+                        sshagent(credentials: ['ec2-ssh-key']) {
+                            sh """
+                            echo "Creating application directory on EC2..."
+                            ssh -o StrictHostKeyChecking=no $EC2_HOST 'mkdir -p $APP_DIR'
+                            
+                            echo "Copying files to EC2..."
+                            scp -o StrictHostKeyChecking=no -r . $EC2_HOST:$APP_DIR/ || (echo "SCP failed with exit code: \$?" && exit 1)
+                            
+                            echo "Verifying files were copied..."
+                            ssh -o StrictHostKeyChecking=no $EC2_HOST 'ls -la $APP_DIR'
+                            """
+                        }
+                    } catch (Exception e) {
+                        echo "Deployment error: ${e.message}"
+                        error "Failed to deploy to EC2"
+                    }
                 }
             }
         }
