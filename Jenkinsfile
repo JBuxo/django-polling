@@ -2,47 +2,44 @@ pipeline {
     agent any
 
     environment {
-        EC2_USER = 'ec2-user'
-        EC2_HOST = '13.59.87.182'
-        PROJECT_PATH = '/home/ec2-user/new_project'
-        SSH_KEY = credentials('ec2-ssh-key')
+        EC2_HOST = 'ec2-user@13.59.87.182'
+        APP_DIR = '/home/ec2-user/django_site2'
     }
 
     stages {
-        stage('Checkout') {
+        stage('Clone repo') {
             steps {
-                checkout scm
+                git url: 'https://github.com/youruser/your-django-repo.git'
             }
         }
 
         stage('Deploy to EC2') {
             steps {
-                echo 'Deploying to EC2 server...'
-                sh """
-                ssh -i ${SSH_KEY} -o StrictHostKeyChecking=no ${EC2_USER}@${EC2_HOST} << 'EOF'
-                    if [ ! -d "${PROJECT_PATH}" ]; then
-                        mkdir -p ${PROJECT_PATH}
-                        git clone https://github.com/JBuxo/django-polling.git ${PROJECT_PATH}
-                    else
-                        cd ${PROJECT_PATH}
-                        git pull origin main
-                    fi
-                    # Optional: Run build/start commands here
-                    # npm install
-                    # pm2 restart app
-                    # systemctl restart nginx
-                EOF
-                """
+                sshagent(credentials: ['ec2-ssh-key']) {
+                    sh """
+                    ssh -o StrictHostKeyChecking=no $EC2_HOST 'mkdir -p $APP_DIR'
+                    scp -o StrictHostKeyChecking=no -r . $EC2_HOST:$APP_DIR/
+                    """
+                }
             }
         }
-    }
 
-    post {
-        success {
-            echo 'success'
-        }
-        failure {
-            echo 'failure'
+        stage('Run Django App') {
+            steps {
+                sshagent(credentials: ['ec2-ssh-key']) {
+                    sh """
+                    ssh -o StrictHostKeyChecking=no $EC2_HOST << 'EOF'
+                      cd $APP_DIR
+                      python3 -m venv venv
+                      source venv/bin/activate
+                      pip install --upgrade pip
+                      pip install -r requirements.txt
+                      python manage.py migrate
+                      nohup python manage.py runserver 0.0.0.0:81 > django.log 2>&1 &
+                    EOF
+                    """
+                }
+            }
         }
     }
 }
