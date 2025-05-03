@@ -36,7 +36,7 @@ pipeline {
                         pip install --upgrade pip &&
                         pip install -r requirements.txt &&
                         python manage.py migrate &&
-                        nohup python manage.py runserver 0.0.0.0:81 > django.log 2>&1 &
+                        nohup python manage.py runserver 0.0.0.0:8000 > django.log 2>&1 &
                     '
                     """
                 }
