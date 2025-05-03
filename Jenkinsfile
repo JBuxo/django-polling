@@ -17,10 +17,10 @@ pipeline {
         stage('Deploy to EC2') {
             steps {
                 sshagent(credentials: ['ec2-ssh-key']) {
-                    sh """
-                    ssh -o StrictHostKeyChecking=no $EC2_HOST 'mkdir -p $APP_DIR'
-                    scp -o StrictHostKeyChecking=no -r . $EC2_HOST:$APP_DIR/
-                    """
+                sh """
+                ssh -o StrictHostKeyChecking=no $EC2_HOST 'mkdir -p $APP_DIR'
+                scp -o StrictHostKeyChecking=no -r \$(ls -A | grep -v .git) $EC2_HOST:$APP_DIR/
+                """
                 }
             }
         }
