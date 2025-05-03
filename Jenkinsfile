@@ -7,77 +7,20 @@ pipeline {
     }
 
     stages {
+
         stage('Clone repo') {
             steps {
-                echo "Starting repository clone..."
                 git branch: 'main', url: 'https://github.com/JBuxo/django-polling.git'
-                echo "Repository clone completed"
-            }
-        }
-
-        stage('Debug Info') {
-            steps {
-                echo "Displaying environment for debugging"
-                sh 'whoami'
-                sh 'pwd'
-                sh 'ls -la'
-            }
-        }
-        
-        stage('Check Credentials') {
-            steps {
-                script {
-                    try {
-                        withCredentials([sshUserPrivateKey(credentialsId: 'ec2-ssh-key', keyFileVariable: 'SSH_KEY')]) {
-                            echo "Successfully loaded SSH key"
-                            sh 'ls -la $SSH_KEY'
-                        }
-                    } catch (Exception e) {
-                        echo "Error loading credentials: ${e.message}"
-                        error "Failed to load SSH credentials"
-                    }
-                }
-            }
-        }
-
-        stage('Test SSH Connection') {
-            steps {
-                script {
-                    try {
-                        sshagent(credentials: ['ec2-ssh-key']) {
-                            sh """
-                            echo "Testing SSH connection to EC2 instance..."
-                            ssh -o StrictHostKeyChecking=no -v $EC2_HOST 'echo "SSH connection successful"'
-                            """
-                        }
-                    } catch (Exception e) {
-                        echo "SSH connection error: ${e.message}"
-                        error "Failed to establish SSH connection"
-                    }
-                }
             }
         }
 
         stage('Deploy to EC2') {
             steps {
-                script {
-                    try {
-                        sshagent(credentials: ['ec2-ssh-key']) {
-                            sh """
-                            echo "Creating application directory on EC2..."
-                            ssh -o StrictHostKeyChecking=no $EC2_HOST 'mkdir -p $APP_DIR'
-                            
-                            echo "Copying files to EC2..."
-                            scp -o StrictHostKeyChecking=no -r . $EC2_HOST:$APP_DIR/ || (echo "SCP failed with exit code: \$?" && exit 1)
-                            
-                            echo "Verifying files were copied..."
-                            ssh -o StrictHostKeyChecking=no $EC2_HOST 'ls -la $APP_DIR'
-                            """
-                        }
-                    } catch (Exception e) {
-                        echo "Deployment error: ${e.message}"
-                        error "Failed to deploy to EC2"
-                    }
+                sshagent(credentials: ['ec2-ssh-key']) {
+                    sh """
+                    ssh -o StrictHostKeyChecking=no $EC2_HOST 'mkdir -p $APP_DIR'
+                    scp -o StrictHostKeyChecking=no -r . $EC2_HOST:$APP_DIR/
+                    """
                 }
             }
         }
@@ -86,59 +29,17 @@ pipeline {
             steps {
                 sshagent(credentials: ['ec2-ssh-key']) {
                     sh """
-                    echo "Starting Django application deployment..."
                     ssh -o StrictHostKeyChecking=no $EC2_HOST << 'EOF'
-                      set -e  # Exit immediately if a command exits with a non-zero status
                       cd $APP_DIR
-                      echo "Creating virtual environment..."
-                      python3 -m venv venv || (echo "Failed to create virtual environment" && exit 1)
-                      
-                      echo "Activating virtual environment..."
+                      python3 -m venv venv
                       source venv/bin/activate
-                      
-                      echo "Upgrading pip..."
                       pip install --upgrade pip
-                      
-                      echo "Installing dependencies..."
                       pip install -r requirements.txt
-                      
-                      echo "Running database migrations..."
                       python manage.py migrate
-                      
-                      echo "Checking if Django is already running..."
-                      pkill -f "python manage.py runserver" || echo "No existing Django process found"
-                      
-                      echo "Starting Django server..."
                       nohup python manage.py runserver 0.0.0.0:81 > django.log 2>&1 &
-                      
-                      echo "Waiting for server to start..."
-                      sleep 5
-                      
-                      echo "Checking if server is running..."
-                      ps aux | grep "runserver" | grep -v grep
-                      
-                      echo "Django deployment completed"
                     EOF
                     """
                 }
-            }
-        }
-    }
-    
-    post {
-        always {
-            echo 'Pipeline execution completed'
-        }
-        success {
-            echo 'Pipeline executed successfully'
-        }
-        failure {
-            echo 'Pipeline execution failed'
-            sshagent(credentials: ['ec2-ssh-key']) {
-                sh """
-                echo "Fetching logs from EC2 instance..."
-                ssh -o StrictHostKeyChecking=no $EC2_HOST 'cat $APP_DIR/django.log || echo "Log file not found"'
-                """
             }
         }
     }
