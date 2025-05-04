@@ -4,6 +4,7 @@ from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
 from django.views import generic
 from django.utils import timezone
+import requests
 
 from .models import Choice, Question
 
@@ -17,9 +18,19 @@ class IndexView(generic.ListView):
         Return the last five published questions (not including those set to be
         published in the future).
         """
-        return Question.objects.filter(pub_date__lte=timezone.now()).order_by("-pub_date")[
-        :5
-        ]
+        return Question.objects.filter(pub_date__lte=timezone.now()).order_by("-pub_date")[:5]
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        # Try to get EC2 public IP address
+        try:
+            response = requests.get('http://169.254.169.254/latest/meta-data/public-ipv4', timeout=1)
+            context['public_ip'] = response.text
+        except Exception:
+            context['public_ip'] = "Unavailable"
+
+        return context
 
 
 class DetailView(generic.DetailView):
