@@ -31,12 +31,22 @@ pipeline {
                     sh """
                     ssh -o StrictHostKeyChecking=no $EC2_HOST '
                         cd $APP_DIR &&
+                        # Kill any existing Django runserver process
+                        pkill -f "manage.py runserver" || true &&
+
+                        # Set up virtual environment
                         python3 -m venv venv &&
                         source venv/bin/activate &&
+
+                        # Install dependencies
                         pip install --upgrade pip &&
                         pip install -r requirements.txt &&
+
+                        # Apply migrations
                         python manage.py migrate &&
-                        setsid nohup python manage.py runserver 0.0.0.0:8000 > django.log 2>&1 < /dev/null &
+
+                        # Start server in background
+                        nohup python manage.py runserver 0.0.0.0:8000 > django.log 2>&1 &
                     '
                     """
                 }
