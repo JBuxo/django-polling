@@ -23,11 +23,10 @@ class IndexView(generic.ListView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
 
-        # Try to get EC2 public IP address
         try:
-            response = requests.get('http://169.254.169.254/latest/meta-data/public-ipv4', timeout=1)
-            context['public_ip'] = response.text
-        except Exception:
+            response = requests.get('http://icanhazip.com', timeout=5)
+            context['public_ip'] = response.text.strip()  # Remove any extra newline characters
+        except Exception as e:
             context['public_ip'] = "Unavailable"
 
         return context
