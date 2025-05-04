@@ -27,7 +27,7 @@ class IndexView(generic.ListView):
             response = requests.get('http://icanhazip.com', timeout=5)
             context['public_ip'] = response.text.strip()  # Remove any extra newline characters
         except Exception as e:
-            context['public_ip'] = "Unavailable"
+            context['public_ip'] = "Unavailabl"
 
         return context
 
